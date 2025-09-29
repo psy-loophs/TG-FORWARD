@@ -3,7 +3,8 @@ from telethon.sessions import StringSession
 from dotenv import load_dotenv
 import os
 import asyncio
-import socket
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
 
 # === LOAD ENV VARIABLES ===
 load_dotenv()
@@ -25,19 +26,32 @@ class C:
     YELLOW = "\033[93m"
     RESET = "\033[0m"
 
-# === DUMMY PORT FOR RENDER WEB SERVICE ===
+# === DUMMY HTTP SERVER FOR RENDER ===
 PORT = int(os.getenv("PORT", 10000))
-sock = socket.socket()
-sock.bind(("0.0.0.0", PORT))
-sock.listen(1)
-print(f"{C.YELLOW}🔌 Listening on port {PORT} (dummy for Render){C.RESET}")
+
+class DummyHandler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot is running!")
+
+def run_server():
+    server = HTTPServer(("0.0.0.0", PORT), DummyHandler)
+    server.serve_forever()
+
+threading.Thread(target=run_server, daemon=True).start()
+print(f"{C.YELLOW}🌐 Dummy HTTP server running on port {PORT}{C.RESET}", flush=True)
 
 async def main():
-    print(f"{C.BLUE}🚀 Starting to copy all old messages (including albums, media)...{C.RESET}")
+    print(f"{C.BLUE}🚀 Starting to copy all old messages (including albums, media)...{C.RESET}", flush=True)
 
     processed_albums = set()
 
-    async for message in client.iter_messages(SOURCE_CHANNEL, reverse=True):
+    # Fetch all messages first and sort by date (oldest → newest)
+    all_messages = [m async for m in client.iter_messages(SOURCE_CHANNEL)]
+    all_messages.sort(key=lambda m: m.date)
+
+    for message in all_messages:
         try:
             # Detect message type
             msg_type = "Message"
@@ -64,12 +78,8 @@ async def main():
                 if message.grouped_id in processed_albums:
                     continue
 
-                album_msgs = []
-                async for m in client.iter_messages(SOURCE_CHANNEL, reverse=True):
-                    if m.grouped_id == message.grouped_id:
-                        album_msgs.append(m)
-
-                album_msgs = list(reversed(album_msgs))
+                album_msgs = [m for m in all_messages if m.grouped_id == message.grouped_id]
+                album_msgs.sort(key=lambda m: m.id)  # preserve album order
                 media_list = [m.media for m in album_msgs if m.media]
                 captions = [m.message or "" for m in album_msgs if m.media]
 
@@ -86,7 +96,7 @@ async def main():
                             files=media_list[0],
                             caption=captions[0] if captions else ""
                         )
-                    print(f"{C.BLUE}📸 Copied {msg_type} (Album) {message.grouped_id} → {target}{C.RESET}")
+                    print(f"{C.BLUE}📸 Copied {msg_type} (Album) {message.grouped_id} → {target}{C.RESET}", flush=True)
 
                 processed_albums.add(message.grouped_id)
 
@@ -97,12 +107,12 @@ async def main():
                         message=message.message or "",
                         file=message.media or None
                     )
-                    print(f"{C.GREEN}✅ Copied {msg_type} {message.id} → {target}{C.RESET}")
+                    print(f"{C.GREEN}✅ Copied {msg_type} {message.id} → {target}{C.RESET}", flush=True)
 
         except Exception as e:
-            print(f"{C.RED}❌ Failed at {message.id}: {e}{C.RESET}")
+            print(f"{C.RED}❌ Failed at {message.id}: {e}{C.RESET}", flush=True)
 
-    print(f"{C.YELLOW}🎉 Done copying all messages!{C.RESET}")
+    print(f"{C.YELLOW}🎉 Done copying all messages!{C.RESET}", flush=True)
 
 # run
 async def run():

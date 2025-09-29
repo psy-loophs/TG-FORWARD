@@ -1,8 +1,11 @@
 import asyncio
+import json
+import os
 from telethon import TelegramClient
-from telethon.tl.types import InputPeerChannel
 
-# ANSI COLORS
+STATE_FILE = "forward_state.json"
+
+# === COLORS ===
 class C:
     GREEN = "\033[92m"
     RED = "\033[91m"
@@ -10,17 +13,45 @@ class C:
     YELLOW = "\033[93m"
     RESET = "\033[0m"
 
-# Forwarding control
-forwarding_task = None
+# === CONTROL FLAGS ===
 stop_forwarding_flag = False
 
+
+# === STATE MANAGEMENT ===
+def load_state():
+    """Load last forwarded message ID from file"""
+    if os.path.exists(STATE_FILE):
+        with open(STATE_FILE, "r") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_state(state):
+    """Save last forwarded message ID to file"""
+    with open(STATE_FILE, "w") as f:
+        json.dump(state, f)
+
+
+# === FORWARDING LOGIC ===
 async def forward_messages(client: TelegramClient, source_channel: int, target_groups: list):
+    """
+    Forward all new messages from source_channel → target_groups
+    Resumes from last saved message ID if available.
+    """
     global stop_forwarding_flag
     stop_forwarding_flag = False
-    print(f"{C.BLUE}🚀 Starting to copy all messages...{C.RESET}", flush=True)
-    
+
+    state = load_state()
+    last_id = state.get(str(source_channel), 0)
+
+    print(f"{C.BLUE}🚀 Starting forwarding from message ID > {last_id}{C.RESET}", flush=True)
+
     processed_albums = set()
-    all_messages = [m async for m in client.iter_messages(source_channel)]
+
+    # Fetch all messages newer than last_id
+    all_messages = [m async for m in client.iter_messages(source_channel, min_id=last_id)]
     all_messages.sort(key=lambda m: m.date)
 
     for message in all_messages:
@@ -65,11 +96,19 @@ async def forward_messages(client: TelegramClient, source_channel: int, target_g
                     )
                     print(f"{C.GREEN}✅ Copied Message {message.id} → {target}{C.RESET}", flush=True)
 
+            # Save last processed ID
+            state[str(source_channel)] = message.id
+            save_state(state)
+
         except Exception as e:
             print(f"{C.RED}❌ Failed at {message.id}: {e}{C.RESET}", flush=True)
 
     print(f"{C.YELLOW}🎉 Finished forwarding messages!{C.RESET}", flush=True)
 
+
 def stop_forwarding():
+    """
+    Set flag to stop forwarding loop.
+    """
     global stop_forwarding_flag
     stop_forwarding_flag = True

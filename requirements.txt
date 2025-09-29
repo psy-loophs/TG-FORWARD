@@ -1,2 +1,4 @@
-telethon>=1.30.0
-python-dotenv>=1.0.1
+telethon==1.30.0
+python-dotenv==1.0.1
+fastapi==0.113.0
+uvicorn==0.26.1

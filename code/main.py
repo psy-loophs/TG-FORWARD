@@ -3,6 +3,7 @@ from telethon.sessions import StringSession
 from dotenv import load_dotenv
 import os
 import asyncio
+import socket
 
 # === LOAD ENV VARIABLES ===
 load_dotenv()
@@ -23,6 +24,13 @@ class C:
     BLUE = "\033[94m"
     YELLOW = "\033[93m"
     RESET = "\033[0m"
+
+# === DUMMY PORT FOR RENDER WEB SERVICE ===
+PORT = int(os.getenv("PORT", 10000))
+sock = socket.socket()
+sock.bind(("0.0.0.0", PORT))
+sock.listen(1)
+print(f"{C.YELLOW}🔌 Listening on port {PORT} (dummy for Render){C.RESET}")
 
 async def main():
     print(f"{C.BLUE}🚀 Starting to copy all old messages (including albums, media)...{C.RESET}")

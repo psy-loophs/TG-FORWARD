@@ -1,3 +1,15 @@
+# === Python 3.13+ compatibility patch for Telethon ===
+import sys
+try:
+    import imghdr  # Works on Python <= 3.12
+except ModuleNotFoundError:
+    import types
+    fake_imghdr = types.ModuleType("imghdr")
+    def what(file, h=None):
+        return None
+    fake_imghdr.what = what
+    sys.modules["imghdr"] = fake_imghdr
+
 import os
 import asyncio
 import threading
@@ -38,10 +50,9 @@ async def start_forward(event):
     global forwarding_task
 
     if event.sender_id != OWNER_ID:
-        return  # Ignore non-owner
-
+        return
     if event.chat_id not in TARGET_GROUPS:
-        return  # Only respond in target groups
+        return
 
     if forwarding_task and not forwarding_task.done():
         await event.reply("⚠️ Forwarding is already running!")
@@ -53,9 +64,9 @@ async def start_forward(event):
 @client.on(events.NewMessage(pattern=r"^(/|!)stop$"))
 async def stop_forward(event):
     global forwarding_task
+
     if event.sender_id != OWNER_ID:
         return
-
     if event.chat_id not in TARGET_GROUPS:
         return
 
@@ -73,4 +84,9 @@ async def main():
     await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except Exception as e:
+        import traceback
+        print("❌ Fatal error in main.py:", e, flush=True)
+        traceback.print_exc()

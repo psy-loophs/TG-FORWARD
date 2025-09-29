@@ -1,10 +1,11 @@
+import os
+import asyncio
+import threading
+from fastapi import FastAPI
+import uvicorn
 from telethon import TelegramClient
 from telethon.sessions import StringSession
 from dotenv import load_dotenv
-import os
-import asyncio
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
 
 # === LOAD ENV VARIABLES ===
 load_dotenv()
@@ -15,10 +16,23 @@ SESSION_STRING = os.getenv("SESSION_STRING")
 SOURCE_CHANNEL = int(os.getenv("SOURCE_CHANNEL"))
 TARGET_GROUPS = [int(x.strip()) for x in os.getenv("TARGET_GROUPS").split(",")]
 
-# === CREATE CLIENT USING StringSession ===
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
-# === ANSI COLORS ===
+# === FASTAPI HEALTH SERVER ===
+app = FastAPI()
+
+@app.get("/")
+async def root():
+    return {"status": "ok", "message": "Userbot is alive"}
+
+def run_health_server():
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
+
+# === TELEGRAM FORWARDING BOT ===
+import sys
+
+# ANSI COLORS
 class C:
     GREEN = "\033[92m"
     RED = "\033[91m"
@@ -26,34 +40,18 @@ class C:
     YELLOW = "\033[93m"
     RESET = "\033[0m"
 
-# === DUMMY HTTP SERVER FOR RENDER ===
-PORT = int(os.getenv("PORT", 10000))
-
-class DummyHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Bot is running!")
-
-def run_server():
-    server = HTTPServer(("0.0.0.0", PORT), DummyHandler)
-    server.serve_forever()
-
-threading.Thread(target=run_server, daemon=True).start()
-print(f"{C.YELLOW}🌐 Dummy HTTP server running on port {PORT}{C.RESET}", flush=True)
-
-async def main():
-    print(f"{C.BLUE}🚀 Starting to copy all old messages (including albums, media)...{C.RESET}", flush=True)
+async def main_forward():
+    print(f"{C.BLUE}🚀 Starting to copy all messages...{C.RESET}", flush=True)
 
     processed_albums = set()
 
-    # Fetch all messages first and sort by date (oldest → newest)
+    # Fetch all messages and sort oldest → newest
     all_messages = [m async for m in client.iter_messages(SOURCE_CHANNEL)]
     all_messages.sort(key=lambda m: m.date)
 
     for message in all_messages:
         try:
-            # Detect message type
+            # Detect type
             msg_type = "Message"
             if message.grouped_id:
                 msg_type = "Album"
@@ -79,7 +77,7 @@ async def main():
                     continue
 
                 album_msgs = [m for m in all_messages if m.grouped_id == message.grouped_id]
-                album_msgs.sort(key=lambda m: m.id)  # preserve album order
+                album_msgs.sort(key=lambda m: m.id)  # maintain album order
                 media_list = [m.media for m in album_msgs if m.media]
                 captions = [m.message or "" for m in album_msgs if m.media]
 
@@ -114,10 +112,18 @@ async def main():
 
     print(f"{C.YELLOW}🎉 Done copying all messages!{C.RESET}", flush=True)
 
-# run
-async def run():
+async def main():
     await client.start()
-    await main()
+    print("🚀 Userbot is running...", flush=True)
+
+    # Run FastAPI health server in a separate thread
+    threading.Thread(target=run_health_server, daemon=True).start()
+
+    # Start forwarding messages
+    await main_forward()
+
+    # Keep the bot running
+    await client.run_until_disconnected()
 
 if __name__ == "__main__":
-    asyncio.run(run())
+    asyncio.run(main())

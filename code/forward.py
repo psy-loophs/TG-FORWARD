@@ -41,7 +41,7 @@ async def forward_all_messages(client, source_channel, target_groups, reply_to=N
                     )
               #  print(f"✅ Copied message {message.id}")
 
-     #   except Exception as e:
+        except Exception as e:
         #    print(f"❌ Failed at {message.id}: {e}")
 
 #    if reply_to:

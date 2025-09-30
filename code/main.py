@@ -19,6 +19,11 @@ TARGET_GROUPS = [int(x) for x in os.getenv("TARGET_GROUPS", "").split(",") if x]
 # === FastAPI App ===
 app = FastAPI()
 
+# Serve dummy favicon to avoid 404
+@app.get("/favicon.ico")
+async def favicon():
+    return b"", 204
+
 # === Telegram Client ===
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
@@ -37,6 +42,10 @@ async def start_handler(event):
     global forwarding_started, OWNER_ID
 
     # Only allow owner
+    if OWNER_ID is None:
+        await event.respond("⚠️ Owner not detected yet. Please try again in a few seconds.")
+        return
+
     if event.sender_id != OWNER_ID:
         await event.respond("❌ You are not the owner!")
         return  
@@ -60,10 +69,10 @@ async def init_owner():
 
 # === Run Telethon + FastAPI together ===
 async def start_services():
-    # Start Telegram client
+    # Start Telegram client and detect owner before listening
     await client.start()
     await init_owner()
-    print("✅ Telegram client started.")
+    print("✅ Telegram client started and owner detected.")
 
     # Start FastAPI (uvicorn) in the same event loop
     import uvicorn

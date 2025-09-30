@@ -21,10 +21,14 @@ Note: If you send the !start command in a channel or group where you are an anon
   - Proper forwarding of grouped media (albums) without duplicates.  
 
 - **No Protected Message Errors**  
-  - Skips protected media or service messages gracefully without getting stuck.  
-
+  - Skips protected media or service messages gracefully without getting stuck.
+  
+- **Redundancy**
+   - Sending the !start command twice will trigger a forwarding notification instead of starting the forwarding process again.
+ 
+   - 
 - **Owner Notifications**  
-  - Start/Done messages are sent to your **Saved Messages (owner ID)**.  
+  - Start messages are sent to the API owner when the !start command is used..  
 
 ---
 

@@ -1,6 +1,7 @@
 import os
 import asyncio
 from fastapi import FastAPI
+from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -10,27 +11,13 @@ from forward import forward_all_messages
 load_dotenv()
 
 API_ID = int(os.getenv("API_ID"))
-API_HASH = os.getenv("API_HASH")
+API_HASH = int(os.getenv("API_HASH")) if os.getenv("API_HASH") else 0
 SESSION_STRING = os.getenv("SESSION_STRING")
 SOURCE_CHANNEL = int(os.getenv("SOURCE_CHANNEL"))
 TARGET_GROUPS = [int(x) for x in os.getenv("TARGET_GROUPS", "").split(",") if x]
 
-# === FastAPI App ===
-app = FastAPI()
-
-# Serve dummy favicon
-@app.get("/favicon.ico")
-async def favicon():
-    return b"", 204
-
-# Uptime monitor compatible root
-@app.get("/")
-async def home():
-    return {"status": "running"}
-
 # === Telegram Client ===
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-
 OWNER_ID = None
 forwarding_started = False
 
@@ -39,7 +26,6 @@ forwarding_started = False
 async def start_handler(event):
     global forwarding_started, OWNER_ID
 
-    # Only allow owner
     if OWNER_ID is None:
         await event.respond("⚠️ Owner not detected yet. Please try again in a few seconds.")
         return
@@ -63,16 +49,31 @@ async def init_owner():
     OWNER_ID = me.id
     print(f"✅ Detected owner ID: {OWNER_ID}")
 
-# === Run Telegram client in background on startup ===
-@app.on_event("startup")
-async def startup_event():
+# === FastAPI App with lifespan ===
+@asynccontextmanager
+async def lifespan(app: FastAPI):
     await client.start()
     await init_owner()
     print("✅ Telegram client started and owner detected.")
+    yield
+    await client.disconnect()
 
-# === Run FastAPI + Telegram client together (portable) ===
+app = FastAPI(lifespan=lifespan)
+
+# Serve dummy favicon (GET + HEAD)
+@app.get("/favicon.ico")
+@app.head("/favicon.ico")
+async def favicon():
+    return b"", 204
+
+# Root endpoint compatible with uptime monitors (GET + HEAD)
+@app.get("/")
+@app.head("/")
+async def home():
+    return {"status": "running"}
+
+# === Run FastAPI + Telegram client together ===
 if __name__ == "__main__":
     import uvicorn
-    # Use PORT env if exists (Render/Heroku), otherwise default 8000
     port = int(os.environ.get("PORT", 8000))
     uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")

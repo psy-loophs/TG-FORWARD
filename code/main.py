@@ -47,7 +47,7 @@ async def start_handler(event):
         return
 
     if event.sender_id != OWNER_ID:
-        await event.respond("❌ You are not the owner!")
+      #  await event.respond("❌ You are not the owner!")
         return  
 
     if forwarding_started:

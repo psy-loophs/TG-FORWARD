@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from forward import forward_all_messages
-
+from monitor import monitor_new_messages
 # === Load environment variables ===
 load_dotenv()
 

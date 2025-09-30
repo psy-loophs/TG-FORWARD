@@ -1,92 +1,74 @@
-# === Python 3.13+ compatibility patch for Telethon ===
-import sys
-try:
-    import imghdr  # Works on Python <= 3.12
-except ModuleNotFoundError:
-    import types
-    fake_imghdr = types.ModuleType("imghdr")
-    def what(file, h=None):
-        return None
-    fake_imghdr.what = what
-    sys.modules["imghdr"] = fake_imghdr
-
 import os
 import asyncio
-import threading
 from fastapi import FastAPI
-import uvicorn
+from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
-from dotenv import load_dotenv
-from forward import forward_messages, stop_forwarding
 
-# === LOAD ENV VARIABLES ===
+from forward import forward_all_messages
+
+# === Load environment variables ===
 load_dotenv()
+
 API_ID = int(os.getenv("API_ID"))
 API_HASH = os.getenv("API_HASH")
 SESSION_STRING = os.getenv("SESSION_STRING")
 SOURCE_CHANNEL = int(os.getenv("SOURCE_CHANNEL"))
-TARGET_GROUPS = [int(x.strip()) for x in os.getenv("TARGET_GROUPS").split(",")]
-OWNER_ID = int(os.getenv("OWNER_ID"))  # Only owner can control the bot
+TARGET_GROUPS = [int(x) for x in os.getenv("TARGET_GROUPS", "").split(",") if x]
 
-client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
-
-# === FASTAPI HEALTH SERVER ===
+# === FastAPI App ===
 app = FastAPI()
 
+# === Telegram Client ===
+client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
+
+# Filled after login
+OWNER_ID = None
+forwarding_started = False
+
+
 @app.get("/")
-async def root():
-    return {"status": "ok", "message": "Userbot is alive"}
+async def home():
+    return {"status": "running"}
 
-def run_health_server():
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
 
-# === COMMAND HANDLING ===
-forwarding_task = None
+@client.on(events.NewMessage(pattern=r"^!start$"))
+async def start_handler(event):
+    global forwarding_started, OWNER_ID
 
-@client.on(events.NewMessage(pattern=r"^(/|!)forward$"))
-async def start_forward(event):
-    global forwarding_task
-
+    # Only respond to the owner; ignore everyone else silently
     if event.sender_id != OWNER_ID:
-        return
-    if event.chat_id not in TARGET_GROUPS:
-        return
+        return  
 
-    if forwarding_task and not forwarding_task.done():
-        await event.reply("⚠️ Forwarding is already running!")
+    if forwarding_started:
+        await event.respond("⚠️ Forwarding already started!")
         return
 
-    await event.reply("🚀 Starting forwarding messages...")
-    forwarding_task = asyncio.create_task(forward_messages(client, SOURCE_CHANNEL, TARGET_GROUPS))
+    forwarding_started = True
+    await event.respond("🚀 Forwarding started... copying old messages.")
 
-@client.on(events.NewMessage(pattern=r"^(/|!)stop$"))
-async def stop_forward(event):
-    global forwarding_task
+    asyncio.create_task(forward_all_messages(client, SOURCE_CHANNEL, TARGET_GROUPS))
 
-    if event.sender_id != OWNER_ID:
-        return
-    if event.chat_id not in TARGET_GROUPS:
-        return
 
-    if forwarding_task and not forwarding_task.done():
-        stop_forwarding()
-        await event.reply("⏹ Stopped forwarding messages.")
-    else:
-        await event.reply("⚠️ Forwarding is not running!")
+async def init_owner():
+    """Detect the session owner automatically."""
+    global OWNER_ID
+    me = await client.get_me()
+    OWNER_ID = me.id
+    print(f"✅ Detected owner ID: {OWNER_ID}")
 
-# === START BOT ===
-async def main():
-    await client.start()
-    print("🚀 Userbot is running...", flush=True)
-    threading.Thread(target=run_health_server, daemon=True).start()
-    await client.run_until_disconnected()
+
+def main():
+    async def runner():
+        await client.start()
+        await init_owner()
+
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(runner())
+
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # always port 8000
+
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except Exception as e:
-        import traceback
-        print("❌ Fatal error in main.py:", e, flush=True)
-        traceback.print_exc()
+    main()

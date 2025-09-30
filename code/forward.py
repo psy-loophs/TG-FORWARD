@@ -1,5 +1,10 @@
-async def forward_all_messages(client, source_channel, target_groups):
-    print("🚀 Starting to copy all old messages (including albums, media)...")
+async def forward_all_messages(client, source_channel, target_groups, reply_to=None):
+    """
+    Forward all old messages from source_channel to target_groups.
+    reply_to: message object to reply with start/done notifications
+    """
+    if reply_to:
+        await reply_to.respond("🚀 Starting to copy all old messages (including albums, media)...")
 
     processed_albums = set()
 
@@ -17,10 +22,13 @@ async def forward_all_messages(client, source_channel, target_groups):
 
                 msgs = list(reversed(msgs))  # keep original order
 
+                # Use the **first non-empty caption** for the album
+                album_caption = next((m.message for m in msgs if m.message), "")
+
                 for target in target_groups:
                     await client.send_message(
                         target,
-                        message=msgs[0].message or "",
+                        message=album_caption,
                         file=[m.media for m in msgs if m.media]
                     )
                 print(f"📸 Copied album {message.grouped_id}")
@@ -39,4 +47,5 @@ async def forward_all_messages(client, source_channel, target_groups):
         except Exception as e:
             print(f"❌ Failed at {message.id}: {e}")
 
-    print("🎉 Done copying all messages!")
+    if reply_to:
+        await reply_to.respond("🎉 Done copying all messages!")

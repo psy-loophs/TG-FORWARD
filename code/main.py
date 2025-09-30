@@ -11,7 +11,7 @@ from forward import forward_all_messages
 load_dotenv()
 
 API_ID = int(os.getenv("API_ID"))
-API_HASH = int(os.getenv("API_HASH")) if os.getenv("API_HASH") else 0
+API_HASH = os.getenv("API_HASH")  # <-- fixed: should be string, not int
 SESSION_STRING = os.getenv("SESSION_STRING")
 SOURCE_CHANNEL = int(os.getenv("SOURCE_CHANNEL"))
 TARGET_GROUPS = [int(x) for x in os.getenv("TARGET_GROUPS", "").split(",") if x]

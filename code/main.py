@@ -1,6 +1,6 @@
 import os
 import asyncio
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from dotenv import load_dotenv
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
@@ -18,16 +18,14 @@ TARGET_GROUPS = [int(x) for x in os.getenv("TARGET_GROUPS", "").split(",") if x]
 # === FastAPI App ===
 app = FastAPI()
 
-# Serve dummy favicon to avoid 404
+# Serve dummy favicon
 @app.get("/favicon.ico")
-@app.head("/favicon.ico")
 async def favicon():
     return b"", 204
 
 # Uptime monitor compatible root
 @app.get("/")
-@app.head("/")
-async def home(request: Request):
+async def home():
     return {"status": "running"}
 
 # === Telegram Client ===
@@ -65,18 +63,16 @@ async def init_owner():
     OWNER_ID = me.id
     print(f"✅ Detected owner ID: {OWNER_ID}")
 
-# === Run Telethon + FastAPI together ===
-async def start_services():
-    # Start Telegram client and detect owner before listening
+# === Run Telegram client in background on startup ===
+@app.on_event("startup")
+async def startup_event():
     await client.start()
     await init_owner()
     print("✅ Telegram client started and owner detected.")
 
-    # Start FastAPI (uvicorn) in the same event loop
-    import uvicorn
-    config = uvicorn.Config(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)), log_level="info")
-    server = uvicorn.Server(config)
-    await server.serve()
-
+# === Run FastAPI + Telegram client together (portable) ===
 if __name__ == "__main__":
-    asyncio.run(start_services())
+    import uvicorn
+    # Use PORT env if exists (Render/Heroku), otherwise default 8000
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info")

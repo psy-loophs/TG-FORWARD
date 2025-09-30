@@ -135,9 +135,9 @@ TARGET_GROUPS=-100648383848,-10042638383838,-1006373837
 
 ---
 
-## 4. Deployment & Command Usage
+##  Deployment & Command Usage
 
-1. Install Dependencies (build command)
+## 1. Install Dependencies (build command)
 
 Make sure you have Python installed.
 
@@ -145,11 +145,12 @@ Install the required libraries by running:
 
 ```pip install -r requirements.txt ```
 
+---
 
-
-2. Start the Bot
+## 2. Start the Bot
 
 Run the bot with:
 
 ``` python code/main.py```
 
+---

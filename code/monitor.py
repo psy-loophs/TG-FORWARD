@@ -1,34 +1,24 @@
-# continue.py
-import asyncio
-from telethon import events
+# monitor.py
+processed_albums = set()  # track forwarded albums
 
-processed_albums = set()  # keep track of albums already forwarded
-
-async def monitor_new_messages(client, source_channel, target_groups, reply_to=None):
-    """
-    Monitor new messages in `source_channel` and forward them to `target_groups`.
-    Handles albums, single messages, and captions.
-    """
-    if reply_to:
-        await reply_to.respond("👀 Monitoring new messages from the source channel...")
+async def monitor_new_messages(client, source_channel, target_groups):
+    from telethon import events
 
     @client.on(events.NewMessage(chats=source_channel))
     async def handler(event):
         message = event.message
-
         try:
             if message.grouped_id:
-                # prevent duplicate albums
                 if message.grouped_id in processed_albums:
-                    return
+                    return  # skip already processed album
 
-                # collect all messages in the album
+                # collect album messages
                 msgs = []
                 async for m in client.iter_messages(source_channel, reverse=True):
                     if m.grouped_id == message.grouped_id:
                         msgs.append(m)
 
-                msgs = list(reversed(msgs))  # keep original order
+                msgs = list(reversed(msgs))
                 album_caption = next((m.message for m in msgs if m.message), "")
 
                 for target in target_groups:
@@ -39,9 +29,7 @@ async def monitor_new_messages(client, source_channel, target_groups, reply_to=N
                     )
 
                 processed_albums.add(message.grouped_id)
-
             else:
-                # single message
                 for target in target_groups:
                     await client.send_message(
                         target,
@@ -50,7 +38,9 @@ async def monitor_new_messages(client, source_channel, target_groups, reply_to=N
                     )
 
         except Exception as e:
-            print(f"Error forwarding message: {e}")
+            print(f"Error forwarding new message: {e}")
 
-    # Keep the client running
-    await client.run_until_disconnected()
+    # Keep running
+    from asyncio import Event
+    stop_event = Event()
+    await stop_event.wait()  # keep monitor alive

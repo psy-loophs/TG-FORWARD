@@ -29,7 +29,6 @@ Note: If you send the !start command in a channel or group where you are an anon
 - **Redundancy**
    - Sending the !start command twice will trigger a forwarding notification instead of starting the forwarding process again.
  
-   - 
 - **Owner Notifications**  
   - Start messages are sent to the API owner when the !start command is used..  
 

@@ -22,13 +22,13 @@ app = FastAPI()
 # === Telegram Client ===
 client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 
-# Filled after login
 OWNER_ID = None
 forwarding_started = False
 
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 async def home():
+    """Root endpoint for health check and status"""
     return {"status": "running"}
 
 
@@ -36,7 +36,7 @@ async def home():
 async def start_handler(event):
     global forwarding_started, OWNER_ID
 
-    # Only respond to the owner; ignore everyone else silently
+    # Only allow owner
     if event.sender_id != OWNER_ID:
         return  
 
@@ -46,7 +46,6 @@ async def start_handler(event):
 
     forwarding_started = True
     await event.respond("🚀 Forwarding started... copying old messages.")
-
     asyncio.create_task(forward_all_messages(client, SOURCE_CHANNEL, TARGET_GROUPS))
 
 
@@ -67,7 +66,7 @@ def main():
     loop.run_until_complete(runner())
 
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)  # always port 8000
+    uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
 if __name__ == "__main__":

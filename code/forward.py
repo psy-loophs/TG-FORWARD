@@ -1,3 +1,14 @@
+import logging
+
+# Setup logging
+logging.basicConfig(
+    level=logging.INFO,  # INFO level logs everything important
+    format="%(asctime)s [%(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+logger = logging.getLogger(__name__)
+
+
 async def forward_all_messages(client, source_channel, target_groups, reply_to=None):
     """
     Forward all old messages from source_channel to target_groups.
@@ -22,7 +33,7 @@ async def forward_all_messages(client, source_channel, target_groups, reply_to=N
 
                 msgs = list(reversed(msgs))  # keep original order
 
-                # Use the **first non-empty caption** for the album
+                # Use the first non-empty caption for the album
                 album_caption = next((m.message for m in msgs if m.message), "")
 
                 for target in target_groups:
@@ -31,7 +42,7 @@ async def forward_all_messages(client, source_channel, target_groups, reply_to=N
                         message=album_caption,
                         file=[m.media for m in msgs if m.media]
                     )
-                print(f"📸 Copied album {message.grouped_id}")
+                logger.info(f"📸 Copied album {message.grouped_id}")
                 processed_albums.add(message.grouped_id)
 
             else:
@@ -42,10 +53,10 @@ async def forward_all_messages(client, source_channel, target_groups, reply_to=N
                         message=message.message or "",
                         file=message.media or None
                     )
-                print(f"✅ Copied message {message.id}")
+                logger.info(f"✅ Copied message {message.id}")
 
         except Exception as e:
-            print(f"❌ Failed at {message.id}: {e}")
+            logger.error(f"❌ Failed at {message.id}: {e}")
 
     if reply_to:
         await reply_to.respond("🎉 Done copying all messages!")

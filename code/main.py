@@ -25,19 +25,20 @@ client = TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH)
 OWNER_ID = None
 forwarding_started = False
 
-
-@app.api_route("/", methods=["GET", "HEAD"])
+# === Routes ===
+@app.get("/")
 async def home():
-    """Root endpoint for health check and status"""
     return {"status": "running"}
 
 
+# === Telegram Handlers ===
 @client.on(events.NewMessage(pattern=r"^!start$"))
 async def start_handler(event):
     global forwarding_started, OWNER_ID
 
     # Only allow owner
     if event.sender_id != OWNER_ID:
+        await event.respond("❌ You are not the owner!")
         return  
 
     if forwarding_started:
@@ -49,25 +50,27 @@ async def start_handler(event):
     asyncio.create_task(forward_all_messages(client, SOURCE_CHANNEL, TARGET_GROUPS))
 
 
+# === Initialize owner ID ===
 async def init_owner():
-    """Detect the session owner automatically."""
     global OWNER_ID
     me = await client.get_me()
     OWNER_ID = me.id
     print(f"✅ Detected owner ID: {OWNER_ID}")
 
 
-def main():
-    async def runner():
-        await client.start()
-        await init_owner()
+# === Run Telethon + FastAPI together ===
+async def start_services():
+    # Start Telegram client
+    await client.start()
+    await init_owner()
+    print("✅ Telegram client started.")
 
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(runner())
-
+    # Start FastAPI (uvicorn) in the same event loop
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(start_services())

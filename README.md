@@ -20,6 +20,9 @@ Note: If you send the !start command in a channel or group where you are an anon
 - **Album Handling**  
   - Proper forwarding of grouped media (albums) without duplicates.  
 
+- **Hide Tags**
+  - The bot remove the original sender tags from all forwarded media files. This makes the forwarded messages appear clean, without showing information such as the sender’s name or channel tag. 
+
 - **No Protected Message Errors**  
   - Skips protected media or service messages gracefully without getting stuck.
   

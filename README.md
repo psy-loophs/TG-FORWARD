@@ -45,7 +45,7 @@ Note: If you send the !start command in a channel or group where you are an anon
 
 
 ### 2. Generate Session File
-You need a Telegram session file (`mention_bot.session`) before deployment.
+You need a Telegram session file (`forward_bot.session`) before deployment.
 
 Create a file called `generate_session.py` with this code:
 
@@ -82,7 +82,7 @@ with client:
 
 ⦁ API_HASH → The secret hash from the same place.
 
-⦁ Session name → Any name you like (e.g., mention_bot).
+⦁ Session name → Any name you like (e.g., forward_bot).
 
 
 ⚡ During the first login, you will also provide:

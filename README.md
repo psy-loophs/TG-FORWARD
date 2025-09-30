@@ -7,8 +7,9 @@ The forwarding is triggered with the `!start` command.
 
 ## ✨ Usage
 
-- `!start` → Run this command in **any chat** (Saved Messages, groups, contacts, etc.) to start forwarding from the source to your target groups/channels. That’s it!  
-
+- `!start` → Run this command in **any chat** (Saved Messages, groups, contacts, etc.) to start forwarding from the source to your target groups/channels. That’s it!
+  
+Note: If you send the !start command in a channel or group where you are an anonymous admin, the userbot cannot detect you as the API owner, and the forwarding will not be triggered.
 ---
 
 ## ⚡ Features

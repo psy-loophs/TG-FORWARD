@@ -1,6 +1,6 @@
 # 🚀 Telegram Forward Userbot (Telethon)
 
-A simple Telegram **userbot** built with **Telethon** that forwards all messages (text, media, files, albums with captions) from one source channel or group to multiple target groups or channels.  
+A simple Telegram **userbot** built with **Telethon** that forwards all messages (text, stickers, gifs, medias, files, albums with captions) from one source channel or group to multiple target groups or channels.  
 The forwarding is triggered with the `!start` command.  
 
 ---
